@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AC Market Mapping</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6f8; }
+    .wrap { max-width: 980px; margin: auto; padding: 16px; }
+    .box { background: #fff; border: 1px solid #ddd; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    input, select, button {
+      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; font-size: 15px;
+    }
+    button { background: #01696f; color: white; border: none; font-weight: bold; cursor: pointer; }
+    .msg { display:none; padding:12px; border-radius:10px; margin-bottom:12px; }
+    .ok { display:block; background:#e3f5f1; color:#0d4f55; }
+    .err { display:block; background:#fbe5e9; color:#91233a; }
+    h2, h3 { margin-top: 0; }
+    .note { font-size: 13px; color: #666; }
+    @media (max-width: 700px) {
+      .grid, .grid3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="box">
+    <h2>AC Market Mapping</h2>
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <div class="box">
+    <h3>Location Mapping</h3>
+    <div class="grid">
+      <select id="state">
+        <option value="">Select State</option>
+      </select>
+
+      <select id="district">
+        <option value="">Select District</option>
+      </select>
+
+      <input id="pincodeSearch" placeholder="Search Pincode">
+
+      <select id="pincode">
+        <option value="">Select Pincode</option>
+      </select>
+
+      <select id="officeName" style="grid-column:1/-1;">
+        <option value="">Select Office Name</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Dealer Information</h3>
+    <div class="grid">
+      <input id="dealerName" placeholder="Dealer Name">
+      <input id="ownerName" placeholder="Owner Name">
+      <input id="mobileNumber" placeholder="Mobile Contact Number" maxlength="10">
+      <input id="totalCounterSize" type="number" placeholder="Total AC Counter Size">
+
+      <select id="daikinAssociation">
+        <option value="">Daikin Association</option>
+        <option>Y</option>
+        <option>N</option>
+      </select>
+
+      <select id="dealerCategory">
+        <option value="">Dealer Category</option>
+        <option>ED</option>
+        <option>AC</option>
+        <option>D&D - Direct Sales</option>
+        <option>D&D - SubDlr (AC)</option>
+        <option>D&D - SubDlr (HA)</option>
+        <option>HA</option>
+        <option>Exclusive</option>
+        <option>Retail-L</option>
+        <option>Retail-N</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Brand Contribution</h3>
+    <p class="note">Sum of brand contributions should not exceed Total AC Counter Size. If total is less, balance will go to Others automatically.</p>
+    <div class="grid3">
+      <input id="daikin" type="number" min="0" placeholder="Daikin">
+      <input id="voltas" type="number" min="0" placeholder="Voltas">
+      <input id="lg" type="number" min="0" placeholder="LG">
+      <input id="panasonic" type="number" min="0" placeholder="Panasonic">
+      <input id="samsung" type="number" min="0" placeholder="Samsung">
+      <input id="hitachi" type="number" min="0" placeholder="Hitachi">
+      <input id="bluestar" type="number" min="0" placeholder="Bluestar">
+      <input id="carrierToshiba" type="number" min="0" placeholder="Carrier/Toshiba">
+      <input id="midea" type="number" min="0" placeholder="Midea">
+      <input id="mh" type="number" min="0" placeholder="MH">
+      <input id="me" type="number" min="0" placeholder="ME">
+      <input id="godrej" type="number" min="0" placeholder="Godrej">
+      <input id="llyod" type="number" min="0" placeholder="LLYOD">
+      <input id="othersManual" type="number" min="0" placeholder="Others (Optional)">
+      <input id="othersCalculated" type="number" placeholder="Others Final" readonly>
+      <input id="brandTotal" type="number" placeholder="Brand Total" readonly>
+    </div>
+  </div>
+
+  <div class="box">
+    <button type="button" onclick="submitFinal()">Submit Mapping</button>
+  </div>
+</div>
+
+<script>
+const locationMaster = [
+  { statename: "GOA", district: "NORTH GOA", pincode: "403001", officename: "Panaji H.O" },
+  { statename: "GOA", district: "NORTH GOA", pincode: "403001", officename: "C.C.Altinho S.O" },
+  { statename: "GOA", district: "NORTH GOA", pincode: "403002", officename: "Caranzalem S.O" },
+  { statename: "GOA", district: "NORTH GOA", pincode: "403501", officename: "Porvorim S.O" },
+  { statename: "GOA", district: "NORTH GOA", pincode: "403507", officename: "Mapusa S.O" },
+  { statename: "GOA", district: "SOUTH GOA", pincode: "403401", officename: "Ponda S.O" },
+  { statename: "GOA", district: "SOUTH GOA", pincode: "403601", officename: "Margao H.O" },
+  { statename: "GOA", district: "SOUTH GOA", pincode: "403707", officename: "Navelim S.O" },
+  { statename: "GOA", district: "SOUTH GOA", pincode: "403708", officename: "Colva S.O" },
+  { statename: "GOA", district: "SOUTH GOA", pincode: "403802", officename: "Vasco Da Gama S.O" }
+];
+
+function showMsg(text, type='ok') {
+  const el = document.getElementById('msg');
+  el.className = 'msg ' + (type === 'error' ? 'err' : 'ok');
+  el.textContent = text;
+}
+
+function unique(arr) {
+  return [...new Set(arr)];
+}
+
+function fillStates() {
+  const states = unique(locationMaster.map(x => x.statename)).sort();
+  const stateEl = document.getElementById('state');
+  stateEl.innerHTML = '<option value="">Select State</option>';
+  states.forEach(state => {
+    stateEl.innerHTML += `<option value="${state}">${state}</option>`;
+  });
+}
+
+document.getElementById('state').addEventListener('change', function() {
+  const state = this.value;
+  const districts = unique(
+    locationMaster
+      .filter(x => x.statename === state)
+      .map(x => x.district)
+  ).sort();
+
+  const districtEl = document.getElementById('district');
+  districtEl.innerHTML = '<option value="">Select District</option>';
+  districts.forEach(d => {
+    districtEl.innerHTML += `<option value="${d}">${d}</option>`;
+  });
+
+  document.getElementById('pincode').innerHTML = '<option value="">Select Pincode</option>';
+  document.getElementById('officeName').innerHTML = '<option value="">Select Office Name</option>';
+  document.getElementById('pincodeSearch').value = '';
+});
+
+document.getElementById('district').addEventListener('change', function() {
+  loadPincodes();
+});
+
+document.getElementById('pincodeSearch').addEventListener('input', function() {
+  loadPincodes();
+});
+
+function loadPincodes() {
+  const state = document.getElementById('state').value;
+  const district = document.getElementById('district').value;
+  const search = document.getElementById('pincodeSearch').value.trim();
+
+  let pincodes = locationMaster
+    .filter(x => x.statename === state && x.district === district)
+    .map(x => String(x.pincode));
+
+  pincodes = unique(pincodes);
+
+  if (search) {
+    pincodes = pincodes.filter(p => p.includes(search));
+  }
+
+  pincodes.sort();
+
+  const pincodeEl = document.getElementById('pincode');
+  pincodeEl.innerHTML = '<option value="">Select Pincode</option>';
+  pincodes.forEach(p => {
+    pincodeEl.innerHTML += `<option value="${p}">${p}</option>`;
+  });
+
+  document.getElementById('officeName').innerHTML = '<option value="">Select Office Name</option>';
+}
+
+document.getElementById('pincode').addEventListener('change', function() {
+  const state = document.getElementById('state').value;
+  const district = document.getElementById('district').value;
+  const pincode = this.value;
+
+  const offices = unique(
+    locationMaster
+      .filter(x => x.statename === state && x.district === district && String(x.pincode) === String(pincode))
+      .map(x => x.officename)
+  ).sort();
+
+  const officeEl = document.getElementById('officeName');
+  officeEl.innerHTML = '<option value="">Select Office Name</option>';
+  offices.forEach(o => {
+    officeEl.innerHTML += `<option value="${o}">${o}</option>`;
+  });
+});
+
+const brandFields = [
+  'daikin', 'voltas', 'lg', 'panasonic', 'samsung', 'hitachi', 'bluestar',
+  'carrierToshiba', 'midea', 'mh', 'me', 'godrej', 'llyod', 'othersManual'
+];
+
+brandFields.forEach(id => {
+  document.getElementById(id).addEventListener('input', calculateBrandTotal);
+});
+
+document.getElementById('totalCounterSize').addEventListener('input', calculateBrandTotal);
+
+function getNum(id) {
+  return Number(document.getElementById(id).value || 0);
+}
+
+function calculateBrandTotal() {
+  const totalCounter = getNum('totalCounterSize');
+
+  const withoutOthers = [
+    'daikin', 'voltas', 'lg', 'panasonic', 'samsung', 'hitachi', 'bluestar',
+    'carrierToshiba', 'midea', 'mh', 'me', 'godrej', 'llyod'
+  ].reduce((sum, id) => sum + getNum(id), 0);
+
+  const manualOthers = getNum('othersManual');
+  const enteredTotal = withoutOthers + manualOthers;
+
+  document.getElementById('brandTotal').value = enteredTotal;
+
+  if (totalCounter > 0) {
+    if (enteredTotal > totalCounter) {
+      document.getElementById('othersCalculated').value = 'Exceeded';
+    } else {
+      const finalOthers = totalCounter - withoutOthers;
+      document.getElementById('othersCalculated').value = finalOthers >= 0 ? finalOthers : 0;
+    }
+  } else {
+    document.getElementById('othersCalculated').value = '';
+  }
+}
+
+function validateForm() {
+  const required = [
+    'state', 'district', 'pincode', 'officeName', 'dealerName', 'ownerName',
+    'mobileNumber', 'totalCounterSize', 'daikinAssociation', 'dealerCategory'
+  ];
+
+  for (const id of required) {
+    if (!document.getElementById(id).value.trim()) {
+      showMsg('Please fill all required fields.', 'error');
+      return false;
+    }
+  }
+
+  const mobile = document.getElementById('mobileNumber').value.trim();
+  if (!/^[0-9]{10}$/.test(mobile)) {
+    showMsg('Please enter valid 10 digit mobile number.', 'error');
+    return false;
+  }
+
+  const totalCounter = getNum('totalCounterSize');
+  const brandTotal = getNum('brandTotal');
+
+  if (brandTotal > totalCounter) {
+    showMsg('Brand total cannot be more than Total AC Counter Size.', 'error');
+    return false;
+  }
+
+  return true;
+}
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "YOUR_DATABASE_URL",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  window.submitToFirebase = async function(payload) {
+    try {
+      await push(ref(db, 'acMarketMapping'), payload);
+      return { status: 'success' };
+    } catch (err) {
+      return { status: 'error', message: err.message };
+    }
+  };
+</script>
+
+<script>
+async function submitFinal() {
+  if (!validateForm()) return;
+
+  const totalCounter = getNum('totalCounterSize');
+  const withoutOthers = [
+    'daikin', 'voltas', 'lg', 'panasonic', 'samsung', 'hitachi', 'bluestar',
+    'carrierToshiba', 'midea', 'mh', 'me', 'godrej', 'llyod'
+  ].reduce((sum, id) => sum + getNum(id), 0);
+
+  if (withoutOthers > totalCounter) {
+    showMsg('Brand contribution cannot exceed Total AC Counter Size.', 'error');
+    return;
+  }
+
+  const finalOthers = totalCounter - withoutOthers;
+
+  const payload = {
+    submittedAt: new Date().toISOString(),
+    state: document.getElementById('state').value.trim(),
+    district: document.getElementById('district').value.trim(),
+    pincode: document.getElementById('pincode').value.trim(),
+    officeName: document.getElementById('officeName').value.trim(),
+    dealerName: document.getElementById('dealerName').value.trim(),
+    ownerName: document.getElementById('ownerName').value.trim(),
+    mobileNumber: document.getElementById('mobileNumber').value.trim(),
+    totalCounterSize: totalCounter,
+    daikinAssociation: document.getElementById('daikinAssociation').value.trim(),
+    dealerCategory: document.getElementById('dealerCategory').value.trim(),
+    daikin: getNum('daikin'),
+    voltas: getNum('voltas'),
+    lg: getNum('lg'),
+    panasonic: getNum('panasonic'),
+    samsung: getNum('samsung'),
+    hitachi: getNum('hitachi'),
+    bluestar: getNum('bluestar'),
+    carrierToshiba: getNum('carrierToshiba'),
+    midea: getNum('midea'),
+    mh: getNum('mh'),
+    me: getNum('me'),
+    godrej: getNum('godrej'),
+    llyod: getNum('llyod'),
+    others: finalOthers
+  };
+
+  showMsg('Submitting data, please wait...');
+
+  const result = await window.submitToFirebase(payload);
+
+  if (result.status === 'success') {
+    showMsg('Market mapping submitted successfully.');
+  } else {
+    showMsg('Submission failed: ' + result.message, 'error');
+  }
+}
+
+fillStates();
+calculateBrandTotal();
+</script>
+
+</body>
+</html>
